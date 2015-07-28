@@ -20,10 +20,12 @@
  * @copyright  2013 Shashikant Vaishnav  {@link http://moodle.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
 require_once(dirname(__FILE__) . '/../../../config.php');
 require_once("SolrPhpClient/Apache/Solr/Service.php");
 require_once("solrlib.php");
 require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/SolrPhpClient/Apache/Solr/HttpTransport/Curl.php");
+
 class tool_coursesearch_locallib
 {
     public function tool_coursesearch_ping($options) {
@@ -436,23 +438,57 @@ class tool_coursesearch_locallib
      * @return int count
      */
     public function tool_coursesearch_coursecount($response) {
-        $count = $response->ngroups;
-        foreach ($response->groups as $doclists => $doclist) {
-            foreach ($doclist->doclist->docs as $doc) {
-                $doc->id = $doc->courseid;
-                foreach ($doc as $key => $value) {
-                    $resultinfo[$key] = $value;
-                }
-                $obj[$doc->courseid] = json_decode(json_encode($resultinfo), false);
-                if (($obj[$doc->courseid]->visibility) == '0') {
-                    context_helper::preload_from_record($obj[$doc->courseid]);
-                    if (!has_capability('moodle/course:viewhiddencourses', context_course::instance($doc->courseid))) {
-                        $count -= 1;
-                    }
-                }
+        $count = $response->numFound;
+        foreach ($response->docs as $doc) {
+            if (!tool_coursesearch_locallib::tool_coursesearch_can_view($doc)) {
+                $count -= 1;
             }
         }
         return $count;
+    }
+
+    public static function tool_coursesearch_can_view($doc) {
+        global $DB, $USER;
+
+        if (isset($doc->user_can_see)) {
+            // This operation is called twice - once to get count and once when rendering, so it might be cached
+            return $doc->user_can_see;
+        }
+
+        switch ($doc->type) {
+            case 'forum_post':
+                $modid = $doc->modid;
+                $cms = get_fast_modinfo($doc->courseid);
+                $cm = $cms->get_cm($modid);
+
+                if (!$cm->uservisible) {
+                    return false;
+                }
+
+                $forum = $DB->get_record('forum',array('id'=>$cm->instance));
+                $discussion = $DB->get_record('forum_discussions',array('id'=>$doc->metadata_discussionid));
+                $post = $DB->get_record('forum_posts',array('id'=>$doc->metadata_postid));
+
+                $doc->user_can_see = forum_user_can_see_post($forum, $discussion, $post, $USER, $cm);
+                return $doc->user_can_see;
+            case 'course_module':
+                $id = $doc->modid;
+                break;
+            case 'course':
+                $course = $DB->get_record('course', array('id'=> $doc->courseid ));
+
+                $doc->user_can_see = can_access_course($course, $USER);
+                return $doc->user_can_see;
+        }
+
+        if (!empty($id)) {
+            $cms = get_fast_modinfo($doc->courseid);
+            $cm = $cms->get_cm($id);
+
+            return $cm->uservisible;
+        }
+
+        return true;
     }
     /**
      * Return the array of solr configuration

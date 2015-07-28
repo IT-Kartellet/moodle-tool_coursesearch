@@ -40,6 +40,8 @@ class coursesearch_resultsui_form extends moodleform
         $mform->addHelpButton('search', 'advancecoursesearch', 'tool_coursesearch');
         $mform->addRule('search', get_string('emptyqueryfield', 'tool_coursesearch'), 'required', null, 'client');
         $mform->setType('search', PARAM_TEXT);
+        $mform->setDefault('search', optional_param('search', '', PARAM_TEXT));
+
         $mform->addElement('advcheckbox', 'filtercheckbox', '', 'Disable all filters');
         $mform->disabledIf('searchfromtime', 'filtercheckbox', 'checked');
         $mform->disabledIf('searchtilltime', 'filtercheckbox', 'checked');
@@ -57,6 +59,21 @@ class coursesearch_resultsui_form extends moodleform
         ));
         $mform->setDefault('searchtilltime', 0);
         $mform->addHelpButton('searchtilltime', 'searchtilltime', 'tool_coursesearch');
+
+        $types = array(
+            'all' => get_string('all'),
+            'course' => get_string('course'),
+            'course_module' => get_string('activity'),
+        );
+
+        $plugins = get_plugin_list_with_function('mod', 'get_additional_solr_types');
+        foreach ($plugins as $component => $function) {
+            $types += $function();
+        }
+
+        $select = $mform->addElement('select', 'type', 'Type', $types);
+        $select->setSelected(optional_param('type', '', PARAM_TEXT));
+
         $mform->addElement('header', 'sortresults', get_string('sortheading', 'tool_coursesearch'));
         $mform->setExpanded('sortresults', false);
         $mform->addElement('select', 'sortmenu', get_string('sortby', 'tool_coursesearch'), array(
