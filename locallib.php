@@ -112,6 +112,11 @@ class tool_coursesearch_locallib
         $courses     = $DB->get_records_sql($sql);
         $courses     = array_values($courses);
         $coursecount = count($courses);
+
+
+        $solr = new tool_coursesearch_solrlib();
+        $solr->connect($options);
+
         for ($idx = 1; $idx < $coursecount; $idx++) {
             set_time_limit(0);
             $courseid = $courses[$idx]->id;
@@ -127,6 +132,16 @@ class tool_coursesearch_locallib
                 $end = true;
             }
             $documents[] = $this->tool_coursesearch_build_document($options, $this->tool_coursesearch_get_courses($courseid));
+
+            $mod_info = get_fast_modinfo($courseid)->instances;
+            foreach ($mod_info as $module => $instances) {
+                foreach ($instances as $cm) {
+                    $record = $DB->get_record($module, array('id'=>$cm->instance));
+
+                    $documents = array_merge($documents, $this->tool_coursesearch_build_cm_documents($cm, $record, $solr));
+                }
+            }
+
             $cnt++;
             if ($cnt == $batchsize) {
                 $this->tool_coursesearch_solr_course($options, $documents, false, false);
@@ -170,11 +185,13 @@ class tool_coursesearch_locallib
     public function tool_coursesearch_build_document($options, $courseinfo) {
         global $DB, $CFG;
         $doc = new Apache_Solr_Document();
+
         $doc->setField('id', uniqid($courseinfo->id));
         $doc->setField('idnumber', $courseinfo->idnumber);
+        $doc->setField('type', 'course');
         $doc->setField('courseid', $courseinfo->id);
         $doc->setField('fullname', $courseinfo->fullname);
-        $doc->setField('summary', $courseinfo->summary);
+        $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->summary));
         $doc->setField('shortname', $courseinfo->shortname);
         $doc->setField('startdate', $this->tool_coursesearch_format_date($courseinfo->startdate));
         $doc->setField('visibility', $courseinfo->visible);
@@ -201,6 +218,49 @@ class tool_coursesearch_locallib
         }
         return $doc;
     }
+
+    public static function tool_coursesearch_clean_summary($summary) {
+        return strip_tags($summary, '<br><br/>');
+    }
+
+    public function tool_coursesearch_build_cm_documents(cm_info $cm, $record, tool_coursesearch_solrlib $solr) {
+        global $PAGE;
+        $docs = array();
+        $doc = new Apache_Solr_Document();
+        $courseid = $cm->get_course()->id;
+
+        // Prevent format module intro from complaining
+        $PAGE->set_context(context_system::instance());
+        $summary = format_module_intro($cm->modname, $record, $cm->id);
+
+        $doc->setField('id', 'course_module_' . $cm->id);
+        $doc->setField('type', 'course_module');
+        $doc->setField('modname', $cm->modname);
+        $doc->setField('modid', $cm->id);
+        $doc->setField('courseid', $courseid);
+        $doc->setField('summary', strip_tags($summary));
+        $doc->setField('fullname', $cm->get_formatted_name());
+        $doc->setField('visibility', $cm->visible);
+
+        $cm_callback = component_callback_exists("mod_{$cm->modname}", 'alter_solr_document');
+        if (is_string($cm_callback)) {
+            $doc = $cm_callback($doc, $cm, $record, $solr);
+        }
+        if ($doc) {
+            // If doc is false, the alter function already inserted - e.g. if using extract
+            $docs[] = $doc;
+        }
+
+        $additional_callback = component_callback_exists("mod_{$cm->modname}", 'get_additional_solr_documents');
+
+        if (is_string($additional_callback)) {
+            $callback_documents = $additional_callback($cm, $record);
+            $docs = array_merge($docs, $callback_documents);
+        }
+
+        return $docs;
+    }
+
     /**
      * Return the date in proper format
      *
@@ -281,18 +341,17 @@ class tool_coursesearch_locallib
             $params['fq']                         = $fq;
             $params['fl']                         = '*,score';
             $params['hl']                         = 'on';
-            $params['hl.fl']                      = 'fullname';
+            $params['hl.fl']                      = 'fullname,summary,content';
             $params['hl.snippets']                = '3';
-            $params['hl.fragsize']                = '50';
+            $params['hl.fragsize']                = '80';
+            $params['hl.simple.pre']              = '<em class="highlight">';
             $params['sort']                       = $sortby;
             $params['spellcheck.onlyMorePopular'] = 'false';
             $params['spellcheck.extendedResults'] = 'false';
             $params['spellcheck.collate']         = 'true';
             $params['spellcheck.count']           = '1';
             $params['spellcheck']                 = 'true';
-            $params['group']                      = 'true';
-            $params['group.field']                = 'courseid';
-            $params['group.ngroups']              = 'true';
+
             $response                             = $solr->search($qry, $offset, $count, $params);
             if (!$response->getHttpStatus() == 200) {
                 $response = null;
@@ -314,18 +373,47 @@ class tool_coursesearch_locallib
         $count  = isset($array['limit']) ? $array['limit'] : 20; // TODO input from user how many results perpage.
         $sort   = optional_param('sortmenu', 'score', PARAM_TEXT);
         $order  = optional_param('order', 'desc', PARAM_TEXT);
+        $type   = optional_param('type', 'all', PARAM_TEXT);
+        $filtercheckbox = optional_param('filtercheckbox', '0', PARAM_TEXT);
         $isdym  = (isset($_GET['isdym'])) ? $_GET['isdym'] : 0;
+
         require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/coursesearch_resultsui_form.php");
         $mform = new coursesearch_resultsui_form();
-        if ($data = $mform->get_data()) {
-            if ($data->filtercheckbox === '0') {
-                $fq = $this->tool_coursesearch_filterbydate($data);
-            } else {
-                $fq = '';
-            }
-        } else {
-            $fq = '';
+
+        $fq = '';
+        if ($type !== 'all') {
+            $fq .= ' +type:' . $type . ' ';
         }
+        if ($filtercheckbox === '0') {
+            $searchfromtime = optional_param_array('searchfromtime', '', PARAM_TEXT);
+            if (!empty($searchfromtime) && !empty($searchfromtime['enabled'])) {
+                $searchfromtime = mktime(
+                    $searchfromtime['hour'],
+                    $searchfromtime['minute'],
+                    0,
+                    $searchfromtime['month'],
+                    $searchfromtime['day'],
+                    $searchfromtime['year']
+                );
+            }
+
+            $searchtilltime = optional_param_array('$searchtilltime', '', PARAM_TEXT);
+            if (!empty($searchtilltime) && !empty($searchtilltime['enabled'])) {
+                $searchtilltime = mktime(
+                    $searchtilltime['hour'],
+                    $searchtilltime['minute'],
+                    0,
+                    $searchtilltime['month'],
+                    $searchtilltime['day'],
+                    $searchtilltime['year']
+                );
+            }
+            $fq .= $this->tool_coursesearch_filterbydate((object)array(
+                'searchfromtime' => $searchfromtime,
+                'searchtilltime' => $searchtilltime,
+            ));
+        }
+
         $out = array();
         if (!$qry) {
             $qry = '';
@@ -453,7 +541,7 @@ function tool_coursesearch_course_deleted_handler($obj) {
         $ob   = new tool_coursesearch_locallib();
         $solr = new tool_coursesearch_solrlib();
         if ($solr->connect($ob->tool_coursesearch_solr_params(), true)) {
-            $solr->deletebyquery($obj->id);
+            $solr->deletebyquery("courseid:{$obj->id} type:course");
             $solr->commit();
         }
         return true;
@@ -472,4 +560,79 @@ function tool_coursesearch_course_updated_handler($obj) {
     if (tool_coursesearch_course_deleted_handler($obj) && tool_coursesearch_course_created_handler($obj)) {
         return true;
     }
+}
+
+function mod_resource_alter_solr_document(Apache_Solr_Document $doc, cm_info $cm, $record, tool_coursesearch_solrlib $solr) {
+    $context = context_module::instance($cm->id);
+
+    $fs = get_file_storage();
+    // TODO: this is not very efficient!! - none the less, this is how mod_resource/view does it
+    $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
+
+    $file = reset($files);
+    unset($files);
+
+    $content = $file->get_content();
+    $solr->extractFromString($content, array(
+        'literal.filename' => $file->get_filename()
+    ), $doc, $file->get_mimetype());
+
+    return false;
+}
+
+function mod_forum_get_additional_solr_documents(cm_info $cm, $record) {
+    $docs = array();
+
+    $discussions = forum_get_discussions($cm);
+
+    foreach ($discussions as $discussion) {
+        $doc = new Apache_Solr_Document();
+        mod_forum_post_solr_document($doc, $discussion, $cm);
+        $docs[] = $doc;
+
+        $posts = forum_get_all_discussion_posts($discussion->id, 'p.created DESC');
+
+        foreach ($posts as $post) {
+            $doc = new Apache_Solr_Document();
+            mod_forum_post_solr_document($doc, $post, $cm);
+            $docs[] = $doc;
+        }
+    }
+
+    return $docs;
+}
+
+function mod_forum_post_solr_document(Apache_Solr_Document $doc, $post, cm_info $cm) {
+    if (!empty($post->created)) {
+        $created = $post->created;
+    } else {
+        $created = $post->timemodified;
+    }
+
+    if (empty($post->discussion)) {
+        $discussion = $post->id;
+        $id = $post->firstpost;
+    } else {
+        $discussion = $post->discussion;
+        $id = $post->id;
+    }
+
+    $doc->setField('id', 'forum_post_' . $id);
+    $doc->setField('startdate', date('Y-m-d\TH:i:s\Z', $created));
+    $doc->setField('type', 'forum_post');
+    $doc->setField('courseid', $cm->course);
+    $doc->setField('metadata_discussionid', $discussion);
+    $doc->setField('metadata_postid', $id);
+    $doc->setField('modid', $cm->id);
+    $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($post->message));
+    $doc->setField('fullname', $post->subject);
+    $doc->setField('visibility', 1);
+
+    return $doc;
+}
+
+function mod_forum_get_additional_solr_types() {
+    return array(
+        'forum_post' => get_string('forumposts', 'mod_forum')
+    );
 }
