@@ -43,3 +43,48 @@ $handlers = array(
         'internal' => 1
     )
 );
+
+$observers = array(
+    array(
+        'eventname' => '\core\event\course_module_created',
+        'callback' => '\tool_coursesearch\coursemodule_observers::created_handler',
+        'internal' => true
+    ),
+    array(
+        'eventname' => '\core\event\course_module_updated',
+        'callback' => '\tool_coursesearch\coursemodule_observers::updated_handler',
+        'internal' => true
+    ),
+    array(
+        'eventname' => '\core\event\course_module_deleted',
+        'callback' => '\tool_coursesearch\coursemodule_observers::deleted_handler',
+        'internal' => true
+    ),
+    array(
+        'eventname' => '\mod_forum\event\post_created',
+        'callback' => '\tool_coursesearch\forum_observers::post_created_handler',
+        'internal' => true
+    ),
+    array(
+        'eventname' => '\mod_forum\event\post_updated',
+        'callback' => '\tool_coursesearch\forum_observers::post_updated_handler',
+        'internal' => true
+    ),
+    array(
+        'eventname' => '\mod_forum\event\post_deleted',
+        'callback' => '\tool_coursesearch\forum_observers::post_deleted_handler',
+        'internal' => true
+    ),
+    array(
+        'eventname' => '\mod_forum\event\discussion_created',
+        'callback' => '\tool_coursesearch\forum_observers::discussion_created_handler',
+        'internal' => true
+    ),
+
+    array(
+        'eventname' => '\mod_forum\event\discussion_deleted',
+        'callback' => '\tool_coursesearch\forum_observers::discussion_deleted_handler',
+        'internal' => true
+    )
+);
+// Discussion updated is handled by post updated
