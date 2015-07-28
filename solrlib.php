@@ -98,9 +98,9 @@ class tool_coursesearch_solrlib
             return false;
         }
     }
-    public function deletebyquery($courseid) {
+    public function deletebyquery($query) {
         try {
-            $this->solr->deleteByQuery('courseid:'.$courseid);
+            $this->solr->deleteByQuery($query);
             $this->solr->commit();
             return true;
         } catch (Exception $e) {
@@ -157,6 +157,13 @@ class tool_coursesearch_solrlib
     public function extract($url, $array, $docs = null) {
         try {
             $this->solr->extract($url, $array, $docs);
+        } catch (Exception $e) {
+            echo $e->getMessage();
+        }
+    }
+    public function extractFromString($string, $array, $docs, $mime) {
+        try {
+            $this->solr->extractFromString($string, $array, $docs, $mime);
         } catch (Exception $e) {
             echo $e->getMessage();
         }
