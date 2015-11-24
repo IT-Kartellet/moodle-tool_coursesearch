@@ -28,4 +28,3 @@ $plugin->requires  = 2013051400; // Requires this Moodle version.
 $plugin->component = 'tool_coursesearch'; // Full name of the plugin (used for diagnostics).
 $plugin->release = '2.5 (Build: 2013051400)';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->dependencies = array('theme_coursesearch' => ANY_VERSION);

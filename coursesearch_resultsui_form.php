@@ -36,30 +36,13 @@ class coursesearch_resultsui_form extends moodleform
         global $CFG, $PAGE;
         $mform    = $this->_form;
         $instance = $this->_customdata;
-        $mform->addElement('text', 'search', get_string('searchcourses', 'tool_coursesearch'));
-        $mform->addHelpButton('search', 'advancecoursesearch', 'tool_coursesearch');
-        $mform->addRule('search', get_string('emptyqueryfield', 'tool_coursesearch'), 'required', null, 'client');
+        $mform->addElement('text', 'search', null);
+        //$mform->addRule('search', get_string('emptyqueryfield', 'tool_coursesearch'), 'required', null, 'client');
         $mform->setType('search', PARAM_TEXT);
         $mform->setDefault('search', optional_param('search', '', PARAM_TEXT));
 
-        $mform->addElement('advcheckbox', 'filtercheckbox', '', 'Disable all filters');
-        $mform->disabledIf('searchfromtime', 'filtercheckbox', 'checked');
-        $mform->disabledIf('searchtilltime', 'filtercheckbox', 'checked');
-        $mform->disabledIf('sortmenu', 'filtercheckbox', 'checked');
-        $mform->addHelpButton('filtercheckbox', 'filtercheckbox', 'tool_coursesearch');
-        $mform->addElement('header', 'filterresults', get_string('filterresults', 'tool_coursesearch'));
-        $mform->setExpanded('filterresults', false);
-        $mform->addElement('date_time_selector', 'searchfromtime', get_string('searchfromtime', 'tool_coursesearch'), array(
-            'optional' => true
-        ));
-        $mform->setDefault('searchfromtime', 0);
-        $mform->addHelpButton('searchfromtime', 'searchfromtime', 'tool_coursesearch');
-        $mform->addElement('date_time_selector', 'searchtilltime', get_string('searchtilltime', 'tool_coursesearch'), array(
-            'optional' => true
-        ));
-        $mform->setDefault('searchtilltime', 0);
-        $mform->addHelpButton('searchtilltime', 'searchtilltime', 'tool_coursesearch');
-
+        /*
+         * SEARCH TYPE
         $types = array(
             'all' => get_string('all'),
             'course' => get_string('course'),
@@ -73,15 +56,8 @@ class coursesearch_resultsui_form extends moodleform
 
         $select = $mform->addElement('select', 'type', 'Type', $types);
         $select->setSelected(optional_param('type', '', PARAM_TEXT));
+        */
 
-        $mform->addElement('header', 'sortresults', get_string('sortheading', 'tool_coursesearch'));
-        $mform->setExpanded('sortresults', false);
-        $mform->addElement('select', 'sortmenu', get_string('sortby', 'tool_coursesearch'), array(
-            'score' => 'By relevance',
-            'shortname' => 'By shortname',
-            'startdate' => 'Newest'
-        ));
-        $mform->addHelpButton('sortmenu', 'sortmenu', 'tool_coursesearch');
-        $this->add_action_buttons(false, get_string('go', 'tool_coursesearch'));
+        $this->add_action_buttons(false, get_string('search', 'tool_coursesearch'));
     }
 }

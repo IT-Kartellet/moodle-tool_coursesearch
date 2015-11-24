@@ -23,6 +23,8 @@
  */
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . "/course/renderer.php");
+require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/locallib.php");
+
 class tool_coursesearch_renderer extends core_course_renderer
 {
     /**   @override
@@ -36,7 +38,7 @@ class tool_coursesearch_renderer extends core_course_renderer
         global $CFG, $PAGE;
         if ($this->validateplugindepedency() && $format == 'plain') {
             require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/coursesearch_resultsui_form.php");
-            require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/locallib.php");
+
             $ob = new tool_coursesearch_locallib();
             if ($ob->tool_coursesearch_pingsolr()) {
                 $this->page->requires->js_init_call('M.tool_coursesearch.auto', $ob->tool_coursesearch_autosuggestparams());
@@ -85,7 +87,7 @@ class tool_coursesearch_renderer extends core_course_renderer
                 'class' => $class
             ));
             if ($this->validateplugindepedency()) {
-                require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/locallib.php");
+                //require_once("$CFG->dirroot/$CFG->admin/tool/coursesearch/locallib.php");
                 $ob = new tool_coursesearch_locallib();
                 if ($ob->tool_coursesearch_pingsolr()) {
                     $results    = $ob->tool_coursesearch_search($displayoptions);

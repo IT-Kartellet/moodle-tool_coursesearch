@@ -2,7 +2,7 @@
 
 namespace tool_coursesearch;
 
-require($CFG->dirroot . '/admin/tool/coursesearch/locallib.php');
+require_once($CFG->dirroot . '/admin/tool/coursesearch/locallib.php');
 
 class forum_observers {
 	public static function post_created_handler(\core\event\base $event) {
