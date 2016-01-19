@@ -188,16 +188,24 @@ class tool_coursesearch_locallib
         global $DB, $CFG;
         $doc = new Apache_Solr_Document();
 
+
+        $institution = $DB->get_record_sql("SELECT LOWER(cc.name) as institution FROM {course_categories} cc WHERE cc.id IN (
+	      SELECT TRIM(LEADING '/' FROM SUBSTRING_INDEX(cc.path, '/', 2))
+	      FROM {course} c JOIN {course_categories} cc ON c.category = cc.id WHERE c.id = :courseid)", array('courseid' => $courseinfo->id));
+
+
         $doc->setField('id', uniqid($courseinfo->id));
         $doc->setField('idnumber', $courseinfo->idnumber);
         $doc->setField('type', 'course');
         $doc->setField('courseid', $courseinfo->id);
         $doc->setField('fullname', $courseinfo->fullname);
+        $doc->setField('institution', $institution->institution);
         $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->summary));
         $doc->setField('shortname', $courseinfo->shortname);
         $doc->setField('startdate', $this->tool_coursesearch_format_date($courseinfo->startdate));
         $doc->setField('visibility', $courseinfo->visible);
         $files = $this->tool_coursesearch_overviewurl($courseinfo->id);
+
         if (get_config('tool_coursesearch', 'overviewindexing')) {
             $solr = new tool_coursesearch_solrlib();
             if ($solr->connect($options, true)) {
@@ -368,7 +376,7 @@ class tool_coursesearch_locallib
      * @return Apache_solr_response object
      */
     public function tool_coursesearch_search($array) {
-        global $CFG;
+        global $CFG,$USER;
         $config = $this->tool_coursesearch_solr_params();
         $qry    = stripslashes(optional_param('search', '', PARAM_TEXT));
         $offset = isset($array['offset']) ? $array['offset'] : 0;
@@ -386,6 +394,11 @@ class tool_coursesearch_locallib
         if ($type !== 'all') {
             $fq .= ' +type:' . $type . ' ';
         }
+
+        //Filter based on institution
+        $institution = strtolower($USER->institution);
+        $fq .= "+ institution:{$institution}";
+
         if ($filtercheckbox === '0') {
             $searchfromtime = optional_param_array('searchfromtime', '', PARAM_TEXT);
             if (!empty($searchfromtime) && !empty($searchfromtime['enabled'])) {
@@ -414,6 +427,8 @@ class tool_coursesearch_locallib
                 'searchfromtime' => $searchfromtime,
                 'searchtilltime' => $searchtilltime,
             ));
+
+
         }
 
         $out = array();
