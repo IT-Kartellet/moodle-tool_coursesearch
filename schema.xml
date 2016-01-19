@@ -43,6 +43,7 @@
                 <filter class="solr.LowerCaseFilterFactory"/>
                 <filter class="solr.EnglishPossessiveFilterFactory"/>
                 <filter class="solr.PorterStemFilterFactory"/>
+                <filter class="solr.NGramFilterFactory"/>
             </analyzer>
             <analyzer type="query">
                 <tokenizer class="solr.WhitespaceTokenizerFactory"/>
@@ -102,6 +103,7 @@
         <field name="shortname" type="text" indexed="true" stored="true"/>
         <field name="documentId" type="text" indexed="true" stored="true"/>
         <field name="summary" type="text" indexed="true" stored="true"/>
+        <field name="institution" type="text" indexed="true" stored="true"/>
         <field name="teaser" type="text" indexed="false" stored="true"/>
         <field name="startdate" type="date" indexed="true" stored="true"/>
         <!-- The string version of the title is used for sorting -->
