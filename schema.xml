@@ -36,13 +36,24 @@
             </analyzer>
         </fieldType>
 
+	<fieldType name="text_ngram" class="solr.TextField" positionIncrementGap="100">
+            <analyzer type="index">
+                <tokenizer class="solr.StandardTokenizerFactory"/>
+            	<filter class="solr.LowerCaseFilterFactory"/>
+	<filter class="solr.NGramFilterFactory" minGramSize="3" maxGramSize="25"/>
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.StandardTokenizerFactory"/>
+                <filter class="solr.LowerCaseFilterFactory"/>
+            </analyzer>
+        </fieldType>
+
         <fieldType name="text" class="solr.TextField" positionIncrementGap="100">
             <analyzer type="index">
                 <tokenizer class="solr.StandardTokenizerFactory"/>
-                <filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="1" catenateNumbers="1" catenateAll="0" splitOnCaseChange="1"/>
+                <filter class="solr.WordDelimiterFilterFactory" generateWordParts="1" generateNumberParts="1" catenateWords="1" catenateNumbers="0" catenateAll="0" splitOnCaseChange="1"/>
                 <filter class="solr.LowerCaseFilterFactory"/>
                 <filter class="solr.EnglishPossessiveFilterFactory"/>
-                <filter class="solr.NGramFilterFactory" minGramSize="1" maxGramSize="100"/>
             </analyzer>
             <analyzer type="query">
                 <tokenizer class="solr.StandardTokenizerFactory"/>
@@ -104,7 +115,20 @@
         <field name="institution" type="text" indexed="true" stored="true"/>
         <field name="teaser" type="text" indexed="false" stored="true"/>
         <field name="startdate" type="date" indexed="true" stored="true"/>
-        <!-- The string version of the title is used for sorting -->
+        <field name="sections_name" type="text" indexed="true" stored="true"/>
+	<field name="sections_summary" type="text" indexed="true" stored="true"/>
+	<field name="module_title" type="text" indexed="true" stored="true"/>
+
+        <field name="ngrams" type="text_ngram" indexed="true" stored="true" multiValued="true"/>
+	<copyField source="fullname" dest="ngrams"/>
+	<copyField source="shortname" dest="ngrams"/>
+ 	<copyField source="summary" dest="ngrams"/>
+ 	<copyField source="institution" dest="ngrams"/>
+ 	<copyField source="sections_name" dest="ngrams"/>
+ 	<copyField source="sections_summary" dest="ngrams"/>
+ 	<copyField source="module_title" dest="ngrams"/>
+
+	<!-- The string version of the title is used for sorting -->
         <copyField source="title" dest="sort_title"/>
 
         <copyField source="fullname" dest="sort_name"/>
@@ -117,13 +141,18 @@
         <field name="idnumber" type="text" indexed="true" stored="true"/>
         <!-- This field is used to build the spellchecker index -->
         <field name="spell" type="phrase_suggest" indexed="true" stored="true" multiValued="true"/>
-
+	<field name="course_concat" type="text" indexed="true" stored="true" multiValued="true"/>
         <!-- copyField commands copy one field to another at the time a document
               is added to the index.  It's used either to index the same field differently,
               or to add multiple fields to the same field for easier/faster searching.  -->
         <copyField source="fullname" dest="spell"/>
         <copyField source="shortname" dest="spell"/>
         <copyField source="idnumber" dest="spell"/>
+
+	<copyField source="sections_name" dest="course_concat"/>
+	<copyField source="sections_summary" dest="course_concat"/>
+	<copyField source="module_title" dest="course_concat"/>
+
         <field name="content" type="text" indexed="true" stored="true" multiValued="true" termVectors="true" termPositions="true" termOffsets="true"/>
         <field name="visibility" type="sint" indexed="false" stored="true"/>
         <field name="type" type="string" indexed="true" stored="true" multiValued="false"/>

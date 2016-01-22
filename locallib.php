@@ -188,6 +188,21 @@ class tool_coursesearch_locallib
         global $DB, $CFG;
         $doc = new Apache_Solr_Document();
 
+        $sections = $DB->get_records_sql("SELECT id, name, summary FROM {course_sections} WHERE course = :courseid",
+            array('courseid' => $courseinfo->id));
+
+        $sections_name_concat = "";
+        $sections_summary_concat = "";
+
+        if($sections){
+            foreach($sections as $section){
+                $sections_name_concat .= "{$section->name} ";
+                $sections_summary_concat .= "{$section->summary} ";
+            }
+        }
+
+        rtrim($sections_name_concat);
+        rtrim($sections_summary_concat);
 
         $institution = $DB->get_record_sql("SELECT LOWER(cc.name) as institution FROM {course_categories} cc WHERE cc.id IN (
 	      SELECT TRIM(LEADING '/' FROM SUBSTRING_INDEX(cc.path, '/', 2))
@@ -197,9 +212,14 @@ class tool_coursesearch_locallib
         $doc->setField('id', uniqid($courseinfo->id));
         $doc->setField('idnumber', $courseinfo->idnumber);
         $doc->setField('type', 'course');
+
+        $doc->setField('sections_name', $sections_name_concat);
+        $doc->setField('sections_summary', $sections_summary_concat);
+
+        $doc->setField('institution', $institution->institution);
+
         $doc->setField('courseid', $courseinfo->id);
         $doc->setField('fullname', $courseinfo->fullname);
-        $doc->setField('institution', $institution->institution);
         $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->summary));
         $doc->setField('shortname', $courseinfo->shortname);
         $doc->setField('startdate', $this->tool_coursesearch_format_date($courseinfo->startdate));
@@ -343,7 +363,7 @@ class tool_coursesearch_locallib
         if ($solr->connect($options, true)) {
             $params            = array();
             $params['defType'] = 'edismax';
-            $params['qf']      = 'idnumber^10 fullname^8 shortname^5 summary^3.5 startdate^1.5 content filename';
+            $params['qf']      = 'idnumber^10 fullname^8 shortname^5 summary^3.5 course_concat^3.5 ngrams^2 startdate^1.5 content filename';
             if (empty($qry) || $qry == '*' || $qry == '*:*') {
                 $params['q.alt'] = "*:*";
                 $qry             = '';
