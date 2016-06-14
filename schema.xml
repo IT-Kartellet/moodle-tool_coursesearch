@@ -109,6 +109,7 @@
              result set and don't need to go to the database with a node_load. -->
 
         <field name="fullname" type="text" indexed="true" stored="true"/>
+        <field name="category" type="integer" indexed="true" stored="true"/>
         <field name="shortname" type="text" indexed="true" stored="true"/>
         <field name="documentId" type="text" indexed="true" stored="true"/>
         <field name="summary" type="text" indexed="true" stored="true"/>
@@ -116,17 +117,17 @@
         <field name="teaser" type="text" indexed="false" stored="true"/>
         <field name="startdate" type="date" indexed="true" stored="true"/>
         <field name="sections_name" type="text" indexed="true" stored="true"/>
-	<field name="sections_summary" type="text" indexed="true" stored="true"/>
-	<field name="module_title" type="text" indexed="true" stored="true"/>
+	    <field name="sections_summary" type="text" indexed="true" stored="true"/>
+	    <field name="module_title" type="text" indexed="true" stored="true"/>
 
         <field name="ngrams" type="text_ngram" indexed="true" stored="true" multiValued="true"/>
-	<copyField source="fullname" dest="ngrams"/>
-	<copyField source="shortname" dest="ngrams"/>
- 	<copyField source="summary" dest="ngrams"/>
- 	<copyField source="institution" dest="ngrams"/>
- 	<copyField source="sections_name" dest="ngrams"/>
- 	<copyField source="sections_summary" dest="ngrams"/>
- 	<copyField source="module_title" dest="ngrams"/>
+        <copyField source="fullname" dest="ngrams"/>
+        <copyField source="shortname" dest="ngrams"/>
+        <copyField source="summary" dest="ngrams"/>
+        <copyField source="institution" dest="ngrams"/>
+        <copyField source="sections_name" dest="ngrams"/>
+        <copyField source="sections_summary" dest="ngrams"/>
+        <copyField source="module_title" dest="ngrams"/>
 
 	<!-- The string version of the title is used for sorting -->
         <copyField source="title" dest="sort_title"/>

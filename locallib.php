@@ -190,6 +190,7 @@ class tool_coursesearch_locallib
 
         $sections = $DB->get_records_sql("SELECT id, name, summary FROM {course_sections} WHERE course = :courseid",
             array('courseid' => $courseinfo->id));
+        $course = $DB->get_record('course', array('id' => $courseinfo->id));
 
         $sections_name_concat = "";
         $sections_summary_concat = "";
@@ -204,7 +205,7 @@ class tool_coursesearch_locallib
         rtrim($sections_name_concat);
         rtrim($sections_summary_concat);
 
-        $institution = $DB->get_record_sql("SELECT LOWER(cc.name) as institution FROM {course_categories} cc WHERE cc.id IN (
+        $institution = $DB->get_record_sql("SELECT LOWER(cc.idnumber) as institution FROM {course_categories} cc WHERE cc.id IN (
 	      SELECT TRIM(LEADING '/' FROM SUBSTRING_INDEX(cc.path, '/', 2))
 	      FROM {course} c JOIN {course_categories} cc ON c.category = cc.id WHERE c.id = :courseid)", array('courseid' => $courseinfo->id));
 
@@ -220,6 +221,7 @@ class tool_coursesearch_locallib
 
         $doc->setField('courseid', $courseinfo->id);
         $doc->setField('fullname', $courseinfo->fullname);
+        $doc->setField('category', $course->category);
         $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->summary));
         $doc->setField('shortname', $courseinfo->shortname);
         $doc->setField('startdate', $this->tool_coursesearch_format_date($courseinfo->startdate));
@@ -259,8 +261,13 @@ class tool_coursesearch_locallib
         $doc = new Apache_Solr_Document();
         $courseid = $cm->get_course()->id;
 
-        // Prevent format module intro from complaining
+        /*Not allowed in newer version of Moodle
+        //Prevent format module intro from complaining
         $PAGE->set_context(context_system::instance());
+        */
+
+        $PAGE->set_context(context_system::instance());
+
         $summary = format_module_intro($cm->modname, $record, $cm->id);
 
         $doc->setField('id', 'course_module_' . $cm->id);
@@ -396,7 +403,7 @@ class tool_coursesearch_locallib
      * @return Apache_solr_response object
      */
     public function tool_coursesearch_search($array) {
-        global $CFG,$USER;
+        global $CFG, $USER, $DB;
         $config = $this->tool_coursesearch_solr_params();
         $qry    = stripslashes(optional_param('search', '', PARAM_TEXT));
         $offset = isset($array['offset']) ? $array['offset'] : 0;
@@ -416,8 +423,40 @@ class tool_coursesearch_locallib
         }
 
         //Filter based on institution
-        $institution = strtolower($USER->institution);
-        $fq .= "+ institution:{$institution}";
+        $user_institution = strtolower($USER->institution);
+        $user_department = strtolower($USER->department);
+
+        //FCA
+        if($user_institution == 'fca'){
+            $institution_filter = "!institution:dca & !institution:dcaip";
+        }
+        //DCA
+        else if($user_institution == 'dca'){
+            $institution_filter = "!institution:fca";
+        }
+        //DCA Implementing partner
+        else if($user_institution == 'dcaip' || $user_department == 'dcaip'){
+            $institution_filter = "!institution:dca & !institution:fca & !institution:joint";
+        }
+        //Guest
+        else if(isguestuser()){
+            $institution_filter = "institution:guest";
+        }
+        //External
+        else{
+            $institution_filter = "institution:external || institution:guest";
+        }
+
+        //Unlisted category - access only through direct links
+        $category_unlisted = $DB->get_record('course_categories', array('idnumber' => 'unlisted'));
+        if(!empty($unlisted)){
+            if(!empty($institution_filter)){
+                $institution_filter .= ' & ';
+            }
+            $institution_filter .= "!category:{$category_unlisted->id}";
+        }
+
+        $fq .= "+ {$institution_filter}";
 
         if ($filtercheckbox === '0') {
             $searchfromtime = optional_param_array('searchfromtime', '', PARAM_TEXT);
