@@ -214,13 +214,13 @@ class tool_coursesearch_locallib
         $doc->setField('idnumber', $courseinfo->idnumber);
         $doc->setField('type', 'course');
 
-        $doc->setField('sections_name', $sections_name_concat);
-        $doc->setField('sections_summary', $sections_summary_concat);
+        $doc->setField('sections_name', tool_coursesearch_locallib::tool_coursesearch_clean_summary($sections_name_concat));
+        $doc->setField('sections_summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($sections_summary_concat));
 
         $doc->setField('institution', $institution->institution);
 
         $doc->setField('courseid', $courseinfo->id);
-        $doc->setField('fullname', $courseinfo->fullname);
+        $doc->setField('fullname', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->fullname));
         $doc->setField('category', $course->category);
         $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->summary));
         $doc->setField('shortname', $courseinfo->shortname);
@@ -422,39 +422,7 @@ class tool_coursesearch_locallib
             $fq .= ' +type:' . $type . ' ';
         }
 
-        //Filter based on institution
-        $user_institution = strtolower($USER->institution);
-        $user_department = strtolower($USER->department);
-
-        //FCA
-        if($user_institution == 'fca'){
-            $institution_filter = "!institution:dca & !institution:dcaip";
-        }
-        //DCA
-        else if($user_institution == 'dca'){
-            $institution_filter = "!institution:fca";
-        }
-        //DCA Implementing partner
-        else if($user_institution == 'dcaip' || $user_department == 'dcaip'){
-            $institution_filter = "!institution:dca & !institution:fca & !institution:joint";
-        }
-        //Guest
-        else if(isguestuser()){
-            $institution_filter = "institution:guest";
-        }
-        //External
-        else{
-            $institution_filter = "institution:external || institution:guest";
-        }
-
-        //Unlisted category - access only through direct links
-        $category_unlisted = $DB->get_record('course_categories', array('idnumber' => 'unlisted'));
-        if(!empty($unlisted)){
-            if(!empty($institution_filter)){
-                $institution_filter .= ' & ';
-            }
-            $institution_filter .= "!category:{$category_unlisted->id}";
-        }
+        $institution_filter = $this->tool_coursesearch_query_filter();
 
         $fq .= "+ {$institution_filter}";
 
@@ -505,6 +473,52 @@ class tool_coursesearch_locallib
             return $results;
         }
     }
+
+    /**
+     * Get query filters based on logged in user
+     * @return string
+     * @throws coding_exception
+     */
+    public function tool_coursesearch_query_filter(){
+        global $USER, $DB;
+
+        //Filter based on institution
+        $user_institution = strtolower($USER->institution);
+        $user_department = strtolower($USER->department);
+
+        //FCA
+        if($user_institution == 'fca'){
+            $institution_filter = "!institution:dca & !institution:dcaip";
+        }
+        //DCA
+        else if($user_institution == 'dca'){
+            $institution_filter = "!institution:fca";
+        }
+        //DCA Implementing partner
+        else if($user_institution == 'dcaip' || $user_department == 'dcaip'){
+            $institution_filter = "!institution:dca & !institution:fca & !institution:joint";
+        }
+        //Guest
+        else if(isguestuser()){
+            $institution_filter = "institution:guest";
+        }
+        //External
+        else{
+            $institution_filter = "institution:external || institution:guest";
+        }
+
+        //Unlisted category - access only through direct links
+        $category_unlisted = $DB->get_record('course_categories', array('idnumber' => 'unlisted'));
+        if(!empty($unlisted)){
+            if(!empty($institution_filter)){
+                $institution_filter .= ' & ';
+            }
+            $institution_filter .= "!category:{$category_unlisted->id}";
+        }
+        return $institution_filter;
+    }
+
+
     /**
      * gives the count of results. we filter the hidden course by iterating through courses.
      *
@@ -569,6 +583,8 @@ class tool_coursesearch_locallib
      * @return array of solr configuration values 
      */
     public function tool_coursesearch_autosuggestparams() {
+        global $USER;
+
         $config = array();
         $this->tool_coursesearch_pingsolr();
         $config[0] = get_config('tool_coursesearch', 'solrhost');
@@ -580,6 +596,7 @@ class tool_coursesearch_locallib
         $path      = get_config('tool_coursesearch', 'solrpath');
         stripos('/', $path) === true ? $path : $path = '/' . $path;
         $config[2] = $path;
+        $config[3] = $this->tool_coursesearch_query_filter();
         return $config;
     }
     /**

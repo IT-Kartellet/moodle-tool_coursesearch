@@ -16,7 +16,7 @@ M.tool_coursesearch = {
         });
 
     },
-    auto: function (Y, host, port, path) {
+    auto: function (Y, host, port, path, filter) {
         YUI().use('autocomplete', 'autocomplete-filters', 'autocomplete-highlighters', 'datasource', function (Y) {
 
             Y.one('body').addClass('yui3-skin-sam');
@@ -32,7 +32,7 @@ M.tool_coursesearch = {
 
                     return response.spellcheck.suggestions[1].suggestion;
                 },
-                source: 'http://' + host + ':' + port + path + '/suggest?wt=json&q={query}&json.wrf={callback}',
+                source: 'http://' + host + ':' + port + path + '/suggest?wt=json&q={query}&fq=' + filter + '&json.wrf={callback}',
             });
         });
     },
