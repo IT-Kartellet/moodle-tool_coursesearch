@@ -408,8 +408,10 @@ class tool_coursesearch_locallib
         $qry    = stripslashes(optional_param('search', '', PARAM_TEXT));
         $offset = isset($array['offset']) ? $array['offset'] : 0;
         $count  = isset($array['limit']) ? $array['limit'] : 20; // TODO input from user how many results perpage.
-        $sort   = optional_param('sortmenu', 'score', PARAM_TEXT);
-        $order  = optional_param('order', 'desc', PARAM_TEXT);
+        $sort   = isset($array['sortmenu']) ? $array['sortmenu'] : 'score';
+        $order  = isset($array['order']) ? $array['order'] : 'asc';
+        //$sort   = optional_param('sortmenu', array_key_exists('sortmenu', $array) ? $array['sortmenu'] : 'score', PARAM_TEXT);
+        //$order  = optional_param('order', 'desc', PARAM_TEXT);
         $type   = optional_param('type', 'all', PARAM_TEXT);
         $filtercheckbox = optional_param('filtercheckbox', '0', PARAM_TEXT);
         $isdym  = (isset($_GET['isdym'])) ? $_GET['isdym'] : 0;
