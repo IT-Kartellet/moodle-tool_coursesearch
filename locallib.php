@@ -221,6 +221,7 @@ class tool_coursesearch_locallib
 
         $doc->setField('courseid', $courseinfo->id);
         $doc->setField('fullname', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->fullname));
+
         $doc->setField('category', $course->category);
         $doc->setField('summary', tool_coursesearch_locallib::tool_coursesearch_clean_summary($courseinfo->summary));
         $doc->setField('shortname', $courseinfo->shortname);
@@ -382,7 +383,8 @@ class tool_coursesearch_locallib
             $params['hl.snippets']                = '3';
             $params['hl.fragsize']                = '80';
             $params['hl.simple.pre']              = '<em class="highlight">';
-            $params['sort']                       = $sortby;
+//            $params['sort']                       = $sortby;
+            $params['sort']                       = 'score desc';
             $params['spellcheck.onlyMorePopular'] = 'false';
             $params['spellcheck.extendedResults'] = 'false';
             $params['spellcheck.collate']         = 'true';
@@ -527,12 +529,24 @@ class tool_coursesearch_locallib
 
         //Unlisted category - access only through direct links
         $category_unlisted = $DB->get_record('course_categories', array('idnumber' => 'unlisted'));
-        if(!empty($unlisted)){
+
+        if(!empty($category_unlisted)){
             if(!empty($institution_filter)){
                 $institution_filter .= ' & ';
             }
             $institution_filter .= "!category:{$category_unlisted->id}";
         }
+
+        if (!empty($institution_filter)) {
+            $institution_filter .= ' & ';
+        }
+        $institution_filter .= 'visibility:1';
+
+        if (!empty($institution_filter)) {
+            $institution_filter .= ' & ';
+        }
+        $institution_filter .= '!type:forum_post';
+
         return $institution_filter;
     }
 
