@@ -500,23 +500,23 @@ class tool_coursesearch_locallib
         }
         // ACT
         else if($user_institution == 'act'){
-            $institution_filter = "!institution:fca & !institution:dca & !institution:cos & !institution:lwf & !institution:diakonia";
+            $institution_filter = "!institution:fca & !institution:dcaip & !institution:dca & !institution:cos & !institution:lwf & !institution:diakonia";
         }
         // COS
         else if($user_institution == 'cos'){
-            $institution_filter = "!institution:fca & !institution:dca & !institution:act & !institution:lwf & !institution:diakonia";
+            $institution_filter = "!institution:fca & !institution:dcaip & !institution:dca & !institution:act & !institution:lwf & !institution:diakonia";
         }
         // LWF
         else if($user_institution == 'lwf'){
-            $institution_filter = "!institution:fca & !institution:dca & !institution:act & !institution:cos & !institution:diakonia";
+            $institution_filter = "!institution:fca & !institution:dcaip & !institution:dca & !institution:act & !institution:cos & !institution:diakonia";
         }
         // DIAKONIA
         else if($user_institution == 'diakonia'){
-            $institution_filter = "!institution:fca & !institution:dca & !institution:act & !institution:cos & !institution:lwf";
+            $institution_filter = "!institution:fca & !institution:dcaip & !institution:dca & !institution:act & !institution:cos & !institution:lwf";
         }
         // DCA Implementing partner
         else if($user_institution == 'dcaip' || $user_department == 'dcaip'){
-            $institution_filter = "!institution:dca & !institution:fca & !institution:joint";
+            $institution_filter = "!institution:fca & !institution:dca & !institution:joint & !institution:act & !institution:cos & !institution:lwf & !institution:diakonia";
         }
         //Guest
         else if(isguestuser()){
